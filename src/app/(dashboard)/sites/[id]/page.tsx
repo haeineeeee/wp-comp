@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { SiteService } from "@/services/site.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Settings } from "lucide-react";
 
 export default async function SiteDetailPage({
   params,
@@ -16,6 +18,12 @@ export default async function SiteDetailPage({
   const site = await SiteService.getById(session.user.id, id);
 
   if (!site) redirect("/dashboard");
+
+  const googleConnections = [
+    { label: "Search Console", connected: !!site.gscProperty },
+    { label: "Analytics 4", connected: !!site.ga4PropertyId },
+    { label: "AdSense", connected: !!site.adsenseAccountId },
+  ];
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -54,6 +62,29 @@ export default async function SiteDetailPage({
             <span className="text-muted-foreground">등록일</span>
             <span>{new Date(site.createdAt).toLocaleDateString("ko-KR")}</span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Google 연결</CardTitle>
+          <Link
+            href={`/sites/${id}/settings`}
+            className="flex items-center gap-1 text-xs text-emerald-600 hover:underline"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            설정
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {googleConnections.map((conn) => (
+            <div key={conn.label} className="flex justify-between">
+              <span className="text-muted-foreground">{conn.label}</span>
+              <Badge variant={conn.connected ? "default" : "outline"}>
+                {conn.connected ? "연결됨" : "미연결"}
+              </Badge>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>

@@ -14,6 +14,9 @@ interface UpdateSiteInput {
   wpUsername?: string;
   appPassword?: string;
   status?: string;
+  gscProperty?: string | null;
+  ga4PropertyId?: string | null;
+  adsenseAccountId?: string | null;
 }
 
 export class SiteService {
@@ -79,6 +82,11 @@ export class SiteService {
     const data: Record<string, unknown> = {};
     if (input.name) data.name = input.name;
     if (input.status) data.status = input.status;
+
+    // Google 속성 업데이트 (null 허용: 연결 해제)
+    if (input.gscProperty !== undefined) data.gscProperty = input.gscProperty;
+    if (input.ga4PropertyId !== undefined) data.ga4PropertyId = input.ga4PropertyId;
+    if (input.adsenseAccountId !== undefined) data.adsenseAccountId = input.adsenseAccountId;
 
     // 자격 증명 변경 시 기존 값과 병합하여 재암호화
     if (input.wpUsername || input.appPassword) {

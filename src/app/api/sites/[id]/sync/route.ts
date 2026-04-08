@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { SyncService } from "@/services/sync.service";
 
-// POST /api/sites/[id]/sync — 수동 글 동기화
+// POST /api/sites/[id]/sync — 전체 동기화 (WP + Google)
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -13,11 +13,11 @@ export async function POST(
   }
 
   const { id } = await params;
-  const result = await SyncService.syncPosts(id, session.user.id);
+  const result = await SyncService.syncFull(id, session.user.id);
 
   if (result.status === "error") {
     return NextResponse.json(
-      { error: result.error, result },
+      { error: "동기화에 실패했습니다", result },
       { status: 500 }
     );
   }

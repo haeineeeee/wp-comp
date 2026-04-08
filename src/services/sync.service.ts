@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { WordPressClient } from "@/integrations/wordpress";
 import type { WPPost } from "@/integrations/wordpress";
+import { GoogleSyncService } from "@/services/google-sync.service";
+import type { SyncStepResult } from "@/integrations/google";
 
 interface SyncResult {
   siteId: string;
@@ -10,6 +12,22 @@ interface SyncResult {
   postsUpdated: number;
   postsRemoved: number;
   error?: string;
+}
+
+interface FullSyncResult {
+  siteId: string;
+  status: "success" | "partial" | "error";
+  steps: {
+    posts: SyncResult;
+    gsc: SyncStepResult;
+    ga4: SyncStepResult;
+    adsense: SyncStepResult;
+  };
+}
+
+/** 100-500ms 랜덤 jitter */
+function jitter(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 100 + Math.random() * 400));
 }
 
 export class SyncService {
@@ -134,16 +152,47 @@ export class SyncService {
     }
   }
 
-  /** 사용자의 모든 사이트 동기화 */
-  static async syncAllSites(userId: string): Promise<SyncResult[]> {
+  /** 전체 동기화: WP 글 + GSC + GA4 + AdSense */
+  static async syncFull(
+    siteId: string,
+    userId: string
+  ): Promise<FullSyncResult> {
+    // WP 글 동기화
+    const posts = await this.syncPosts(siteId, userId);
+
+    await jitter();
+
+    // Google API 동기화 (각 단계 사이 jitter)
+    const gsc = await GoogleSyncService.syncSearchConsole(siteId, userId);
+    await jitter();
+    const ga4 = await GoogleSyncService.syncGA4(siteId, userId);
+    await jitter();
+    const adsense = await GoogleSyncService.syncAdSense(siteId, userId);
+
+    // 상태 결정: 모두 성공/skipped → success, 부분 실패 → partial, 전부 실패 → error
+    const stepStatuses = [posts.status, gsc.status, ga4.status, adsense.status];
+    const hasError = stepStatuses.includes("error");
+    const hasSuccess =
+      stepStatuses.includes("success") ||
+      posts.status === "success";
+
+    let status: "success" | "partial" | "error" = "success";
+    if (hasError && hasSuccess) status = "partial";
+    else if (hasError && !hasSuccess) status = "error";
+
+    return { siteId, status, steps: { posts, gsc, ga4, adsense } };
+  }
+
+  /** 사용자의 모든 사이트 전체 동기화 */
+  static async syncAllSites(userId: string): Promise<FullSyncResult[]> {
     const sites = await prisma.wordPressSite.findMany({
       where: { userId, status: "active" },
       select: { id: true },
     });
 
-    const results: SyncResult[] = [];
+    const results: FullSyncResult[] = [];
     for (const site of sites) {
-      const result = await this.syncPosts(site.id, userId);
+      const result = await this.syncFull(site.id, userId);
       results.push(result);
     }
     return results;
