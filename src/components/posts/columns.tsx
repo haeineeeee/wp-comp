@@ -13,6 +13,7 @@ interface PostRow {
   publishedAt: string | null;
   pageviews30d: number;
   clicks30d: number;
+  impressions30d: number;
   avgPosition: number | null;
   indexingStatus: string;
   site: { id: string; name: string; url: string };
@@ -113,6 +114,41 @@ export const columns: ColumnDef<PostRow>[] = [
         {row.original.clicks30d.toLocaleString()}
       </span>
     ),
+  },
+  {
+    id: "action",
+    header: "추천",
+    cell: ({ row }) => {
+      const { pageviews30d, clicks30d, impressions30d, indexingStatus } =
+        row.original;
+
+      // 규칙 기반 액션 추천
+      if (
+        pageviews30d > 100 &&
+        (indexingStatus === "not_indexed" || indexingStatus === "pending")
+      ) {
+        return (
+          <Badge className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300">
+            색인 요청
+          </Badge>
+        );
+      }
+      if (impressions30d > 500 && clicks30d > 0 && clicks30d / impressions30d < 0.02) {
+        return (
+          <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            제목 개선
+          </Badge>
+        );
+      }
+      if (pageviews30d === 0 && row.original.status === "publish") {
+        return (
+          <Badge className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            홍보 필요
+          </Badge>
+        );
+      }
+      return <span className="text-xs text-muted-foreground">—</span>;
+    },
   },
 ];
 

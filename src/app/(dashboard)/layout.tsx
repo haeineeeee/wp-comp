@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { SyncButton } from "@/components/dashboard/sync-button";
 
 export default async function DashboardLayout({
   children,
@@ -24,9 +25,7 @@ export default async function DashboardLayout({
             <span className="text-sm text-muted-foreground">Dashboard</span>
           </div>
           <div className="flex items-center gap-3">
-            <button className="rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400">
-              Sync Now
-            </button>
+            <SyncButton />
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">
               {session.user.name?.[0] || "U"}
             </div>
