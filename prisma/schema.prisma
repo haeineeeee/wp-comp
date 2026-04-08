@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  sites          WordPressSite[]
+  inviteCodesCreated InviteCode[] @relation("CreatedBy")
+  inviteCodeUsed     InviteCode?  @relation("UsedBy")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model InviteCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  createdById String
+  usedById    String?   @unique
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  createdBy User  @relation("CreatedBy", fields: [createdById], references: [id])
+  usedBy    User? @relation("UsedBy", fields: [usedById], references: [id])
+}
+
+model WordPressSite {
+  id               String   @id @default(cuid())
+  userId           String
+  url              String
+  name             String
+  apiKey           String   // AES-256-GCM encrypted
+  gscProperty      String?
+  ga4PropertyId    String?
+  adsenseAccountId String?
+  status           String   @default("active") // active, error, disabled
+  lastSyncAt       DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts             PostCache[]
+  trafficSnapshots  TrafficSnapshot[]
+  searchPerformance SearchPerformance[]
+  revenueSnapshots  RevenueSnapshot[]
+  syncLogs          SyncLog[]
+
+  @@unique([userId, url])
+}
+
+model PostCache {
+  id              String    @id @default(cuid())
+  siteId          String
+  wpPostId        Int
+  title           String
+  slug            String
+  status          String    // publish, draft, private
+  publishedAt     DateTime?
+  pageviews30d    Int       @default(0)
+  clicks30d       Int       @default(0)
+  impressions30d  Int       @default(0)
+  avgPosition     Float?
+  indexingStatus  String    @default("unknown") // indexed, pending, not_indexed, unknown
+  estimatedRevenue Float?
+  updatedAt       DateTime  @updatedAt
+
+  site WordPressSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, wpPostId])
+}
+
+model TrafficSnapshot {
+  id              String   @id @default(cuid())
+  siteId          String
+  date            DateTime @db.Date
+  pageviews       Int      @default(0)
+  sessions        Int      @default(0)
+  users           Int      @default(0)
+  organicSessions Int      @default(0)
+
+  site WordPressSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, date])
+}
+
+model SearchPerformance {
+  id            String   @id @default(cuid())
+  siteId        String
+  date          DateTime @db.Date
+  clicks        Int      @default(0)
+  impressions   Int      @default(0)
+  avgCtr        Float    @default(0)
+  avgPosition   Float    @default(0)
+
+  site WordPressSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, date])
+}
+
+model RevenueSnapshot {
+  id                String   @id @default(cuid())
+  siteId            String
+  date              DateTime @db.Date
+  estimatedEarnings Float    @default(0)
+  rpm               Float    @default(0)
+  cpc               Float    @default(0)
+  ctr               Float    @default(0)
+
+  site WordPressSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, date])
+}
+
+model SyncLog {
+  id           String   @id @default(cuid())
+  siteId       String
+  syncType     String   // full, manual, cron
+  status       String   // running, success, partial, error
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  errorMessage String?
+
+  site WordPressSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+}
