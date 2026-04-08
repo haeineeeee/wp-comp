@@ -16,23 +16,24 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSites } from "@/hooks/use-sites";
 
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Posts", href: "/dashboard", icon: FileText },
+  { title: "Posts", href: "/posts", icon: FileText },
   { title: "Revenue", href: "/revenue", icon: DollarSign },
   { title: "SEO", href: "/seo", icon: Search },
 ];
 
-const sites = [
-  { name: "tech-blog.com", color: "#059669" },
-  { name: "life-journal.kr", color: "#3b82f6" },
-  { name: "dev-notes.io", color: "#f59e0b" },
-  { name: "photo-daily.com", color: "#ef4444" },
+const SITE_COLORS = [
+  "#059669", "#3b82f6", "#f59e0b", "#ef4444",
+  "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: sites, isLoading: sitesLoading } = useSites();
 
   return (
     <Sidebar collapsible="icon">
@@ -72,21 +73,32 @@ export function AppSidebar() {
           <SidebarGroupLabel>Sites</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {sites.map((site) => (
-                <SidebarMenuItem key={site.name}>
-                  <SidebarMenuButton render={<Link href="#" />}>
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: site.color }}
-                    />
-                    <span className="truncate text-xs">{site.name}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {sitesLoading ? (
+                Array.from({ length: 2 }).map((_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <div className="flex items-center gap-2 px-2 py-1.5">
+                      <Skeleton className="h-2.5 w-2.5 shrink-0 rounded-full" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </SidebarMenuItem>
+                ))
+              ) : (
+                sites?.map((site, index) => (
+                  <SidebarMenuItem key={site.id}>
+                    <SidebarMenuButton render={<Link href={`/sites/${site.id}`} />}>
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: SITE_COLORS[index % SITE_COLORS.length] }}
+                      />
+                      <span className="truncate text-xs">{site.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton render={<Link href="/sites/new" />} className="text-emerald-600">
                   <Plus className="h-4 w-4" />
-                  <span>Add Site</span>
+                  <span>사이트 추가</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
