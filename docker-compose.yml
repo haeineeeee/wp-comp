@@ -10,6 +10,44 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wpcomp"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production
+    environment:
+      DATABASE_URL: postgresql://wpcomp:${POSTGRES_PASSWORD:-wpcomp_dev}@db:5432/wpcomp
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cron:
+    image: curlimages/curl:latest
+    restart: unless-stopped
+    depends_on:
+      - app
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Cron sync every 6 hours"
+        while true; do
+          sleep 21600
+          curl -s -X POST http://app:3000/api/cron/sync \
+            -H "Authorization: Bearer $${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            || echo "Sync failed at $$(date)"
+        done
+    env_file:
+      - .env.production
 
 volumes:
   pgdata:
